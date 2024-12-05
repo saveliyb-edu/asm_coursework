@@ -18,21 +18,14 @@ void enqueue(int value) {
         return;
     }
 
-    asm{
-        mov bx, OFFSET queue
-        mov ax,[bx + 2]
-        inc ax
-        mov cx, QUEUE_SIZE
-        xor dx, dx
-        div cx
-        mov[bx + 2], dx
-    }
-
     queue.data[queue.rear] = value;
+
+    queue.rear = (queue.rear + 1) % QUEUE_SIZE;
+
     queue.count++;
+
     printf("The %d element has been added to the queue\n", value);
 }
-
 
 int dequeue() {
     int value;
@@ -44,21 +37,28 @@ int dequeue() {
 
     value = queue.data[queue.front];
 
-    asm{
-        mov bx, OFFSET queue
-        mov ax,[bx]
-        inc ax
-        mov cx, QUEUE_SIZE
-        xor dx, dx
-        div cx
-        mov[bx], dx
-    }
+    queue.front = (queue.front + 1) % QUEUE_SIZE;
 
     queue.count--;
+
     printf("The %d element has been removed from the queue\n", value);
     return value;
 }
 
+void printQueue() {
+    int i;
+    if (queue.count == 0) {
+        printf("The queue is empty!\n");
+        return;
+    }
+
+    printf("Queue contents: ");
+    for (i = 0; i < queue.count; i++) {
+        int index = (queue.front + i) % QUEUE_SIZE; 
+        printf("%d ", queue.data[index]);
+    }
+    printf("\n");
+}
 
 void demo() {
     int choice, value;
@@ -66,7 +66,8 @@ void demo() {
         printf("\nMenu:\n");
         printf("1. Add an item\n");
         printf("2. Delete an item\n");
-        printf("3. Exit\n");
+        printf("3. Print the queue\n");
+        printf("4. Exit\n");
         printf("Select an action: ");
         scanf("%d", &choice);
 
@@ -83,12 +84,15 @@ void demo() {
             }
             break;
         case 3:
+            printQueue();
+            break;
+        case 4:
             printf("Exiting the program.\n");
             break;
         default:
             printf("Wrong choice, try again.\n");
         }
-    } while (choice != 3);
+    } while (choice != 4);
 }
 
 int main() {
