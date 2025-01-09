@@ -2,11 +2,13 @@
 .stack 100h
 .data
     QUEUE_SIZE   equ 10
-    queue        dw QUEUE_SIZE dup(?)
-    head         dw 0
-    tail         dw 0
-    buffer db 7 dup('$')   ; Буфер для строки (6 символов + '$')
-    ten dw 10              ; Константа для деления на 10
+    queue        dw QUEUE_SIZE dup(?)  ; Массив для хранения элементов очереди
+    head         dw 0                  ; Индекс головы очереди
+    tail         dw 0                  ; Индекс хвоста очереди
+    count        dw 0                  ; Счетчик элементов в очереди
+    buffer       db 7 dup('$')         ; Буфер для строки (6 символов + '$')
+    ten          dw 10                 ; Константа для деления на 10
+    empty_msg    db 'The queue is empty', 0Dh, 0Ah, '$'  ; Сообщение о пустой очереди
 .code
 main:
     ; Инициализация сегментов
@@ -28,17 +30,13 @@ main:
     mov ax, 50
     call enqueue
 
-    ; Извлечение элементов из очереди
-    call dequeue
-    ; элемент теперь в ax, далее можно использовать для вывода
-    call print_number
-
+    ; Извлечение элементов из очереди и вывод их на экран
     call dequeue
     call print_number
 
     call dequeue
     call print_number
-    
+
     call dequeue
     call print_number
     
@@ -47,6 +45,13 @@ main:
     
     call dequeue
     call print_number
+    
+    call dequeue
+    call print_number
+
+    ; Попытка извлечения из пустой очереди
+    call dequeue
+    call dequeue
 
     ; Завершение программы
     mov ax, 4C00h
@@ -58,20 +63,26 @@ enqueue proc
     push bx
     push si
 
+    ; Проверка на переполнение очереди
+    mov cx, count
+    cmp cx, QUEUE_SIZE
+    je queue_full
+
     mov bx, tail
     shl bx, 1               ; Умножаем индекс на 2 (размер слова)
     lea si, queue[bx]
     mov [si], ax
 
-    mov bx, tail
-    inc bx
-    cmp bx, QUEUE_SIZE
+    inc tail
+    cmp tail, QUEUE_SIZE
     jne skip_reset_tail
-    mov bx, 0
+    mov tail, 0
 
 skip_reset_tail:
-    mov tail, bx
+    ; Увеличение счетчика элементов
+    inc count
 
+queue_full:
     pop si
     pop bx
     pop ax
@@ -83,22 +94,38 @@ dequeue proc
     push bx
     push si
 
+    ; Проверка на пустоту очереди
+    mov cx, count
+    cmp cx, 0
+    je queue_empty
+
     mov bx, head
     shl bx, 1               ; Умножаем индекс на 2 (размер слова)
     lea si, queue[bx]
     mov ax, [si]
 
-    mov bx, head
-    inc bx
-    cmp bx, QUEUE_SIZE
+    inc head
+    cmp head, QUEUE_SIZE
     jne skip_reset_head
-    mov bx, 0
+    mov head, 0
 
 skip_reset_head:
-    mov head, bx
+    ; Уменьшение счетчика элементов
+    dec count
 
     pop si
     pop bx
+    ret
+
+queue_empty:
+    ; Печать сообщения о пустой очереди
+    lea dx, empty_msg
+    mov ah, 09h
+    int 21h
+
+    pop si
+    pop bx
+    xor ax, ax  ; Возвращаем 0 в ax
     ret
 dequeue endp
 
