@@ -1,93 +1,153 @@
-DOSSEG 
-.model SMALL 
-.stack 100h 
- 
-.data 
-array db "Petrova A.A.", 10, 13 
-    db "Kruglov N.V.", 10, 13 
-    db "Andreev T.P.", 10, 13 
-    db "Krylova P.G.", 10, 13 
-    db "Kruglov F.I.", 10, 13 
-    db "Barsovi O.U.", 10, 13 
-    db "Savinov K.L.", 10, 13 
-    db "Egorova S.Y.", 10, 13 
-    db "Egorova D.N.", 10, 13 
-    db "Simonov K.A.", 10, 13 
-    db "$" 
- 
-string db "New massiv: ", 10, 13, "$" 
- 
-.code 
-; Функция обмена строк 
-swap proc near 
-    push bp 
-    mov bp, sp 
-    push si 
-    push di 
- 
-    mov si, [bp+4]   ; Адрес первой строки 
-    mov di, [bp+6]   ; Адрес второй строки 
-    mov cx, 12       ; Длина строки для обмена 
-swap_loop: 
-    mov al, [si] 
-    mov bl, [di] 
-    mov [si], bl 
-    mov [di], al 
-    inc si 
-    inc di 
-    loop swap_loop 
- 
-    pop di 
-    pop si 
-    pop bp 
-    ret 
-swap endp 
- 
-start: 
-    mov ax, @data 
-    mov ds, ax 
- 
-    ; Вывод начального списка 
-    mov dx, offset array 
-    mov ah, 09h 
-    int 21h 
- 
-    ; Сортировка пузырьком 
-    mov cx, 9           ; Количество строк - 1 
-outer_loop: 
-    push cx 
-    mov si, offset array 
-    mov bx, 12          ; Размер строки в массиве 
-inner_loop: 
-    mov di, si 
-    add di, bx          ; Указатель на следующую строку 
- 
-    ; Сравнение символов инициала имени 
-    mov al, [si+8]      ; Инициал имени текущей строки 
-    mov bl, [di+8]      ; Инициал имени следующей строки 
-    cmp al, bl 
-    jbe skip_swap       ; Если текущий <= следующего, пропускаем 
- 
-    ; Обмен строками 
-    push si 
-    push di 
-    call swap 
-skip_swap: 
-    add si, 12          ; Переход к следующей строке 
-    loop inner_loop 
- 
-    pop cx 
-    loop outer_loop 
- 
-    ; Вывод отсортированного списка 
-    mov dx, offset string 
-    mov ah, 09h 
-    int 21h 
-    mov dx, offset array 
-    mov ah, 09h 
-    int 21h 
- 
-    ; Завершение программы 
-    mov ah, 4Ch 
-    int 21h 
-end start
+.model small
+.stack 100h
+.data
+    ; Исходный список строк
+    people db 'Ivanov I.A.$'
+           db 'Petrov P.S.$'
+           db 'Sidorov S.M.$'
+           db 'Alekseev A.B.$'
+           db 'Borisov B.V.$'
+           db 'Vasiliev V.G.$'
+           db 'Grigoriev G.D.$'
+           db 'Dmitriev D.E.$'
+           db 'Egorov E.Z.$'
+           db 'Zhukov Z.Z.$'
+    sorted db 160 dup(0) ; Отсортированный список
+    temp db 16 dup(0)    ; Временная строка для обмена
+    msg1 db 'Initial list:', 0Dh, 0Ah, '$'
+    msg2 db 0Dh, 0Ah, 'Sorted list:', 0Dh, 0Ah, '$'
+    new_line db 0Dh, 0Ah, '$' ; Символы новой строки
+
+.code
+main proc
+    mov ax, @data
+    mov ds, ax
+    mov es, ax
+
+    ; Вывод начального списка
+    call print_initial_list
+
+    ; Сортировка и вывод отсортированного списка
+    call sort_list
+    call print_sorted_list
+
+    ; Завершение программы
+    mov ah, 4Ch
+    int 21h
+main endp
+
+; Функция вывода начального списка
+print_initial_list proc
+    lea dx, msg1
+    mov ah, 09h
+    int 21h
+
+    lea si, people
+    mov cx, 10
+print_list_loop:
+    ; Выводим строку
+    lea dx, [si]
+    mov ah, 09h
+    int 21h
+    ; Переход на новую строку
+    lea dx, new_line
+    mov ah, 09h
+    int 21h
+    ; Переход к следующей строке
+    next_string:
+    mov al, [si]
+    inc si
+    cmp al, '$'
+    jne next_string
+    loop print_list_loop
+    ret
+print_initial_list endp
+
+; Функция сортировки списка
+sort_list proc
+    ; Копирование списка в рабочую область
+    lea si, people
+    lea di, sorted
+    mov cx, 160
+    rep movsb
+
+    ; Сортировка пузырьком по возрастанию инициала имени
+    mov cx, 10
+outer_loop:
+    dec cx
+    mov si, offset sorted
+    mov di, si
+    next_line:
+    ; Поиск конца строки si
+    mov al, [si]
+    inc si
+    cmp al, '$'
+    jne next_line
+    ; Поиск конца строки di
+    mov al, [di]
+    inc di
+    cmp al, '$'
+    jne next_line
+inner_loop:
+    mov al, [si-8]  ; Инициал имени первой строки
+    mov ah, [di-8]  ; Инициал имени второй строки
+    cmp al, ah
+    jbe skip_swap
+    ; Обмен строк
+    push si
+    push di
+    lea si, [si-16]
+    lea di, temp
+    mov cx, 16
+    rep movsb
+    pop di
+    pop si
+    push si
+    push di
+    lea si, [di-16]
+    lea di, [si-16]
+    mov cx, 16
+    rep movsb
+    pop di
+    pop si
+    lea si, temp
+    lea di, [di-16]
+    mov cx, 16
+    rep movsb
+skip_swap:
+    add si, 16
+    add di, 16
+    dec bx
+    jnz inner_loop
+    loop outer_loop
+    ret
+sort_list endp
+
+; Функция вывода отсортированного списка
+print_sorted_list proc
+    lea dx, msg2
+    mov ah, 09h
+    int 21h
+
+    lea si, sorted
+    mov cx, 10
+sorted_list_loop:
+    ; Выводим строку
+    lea dx, [si]
+    mov ah, 09h
+    int 21h
+    ; Переход на новую строку
+    lea dx, new_line
+    mov ah, 09h
+    int 21h
+    ; Переход к следующей строке
+    next_sorted_string:
+    mov al, [si]
+    inc si
+    cmp al, '$'
+    jne next_sorted_string
+    loop sorted_list_loop
+    ret
+print_sorted_list endp
+
+end main
