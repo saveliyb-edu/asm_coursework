@@ -1,0 +1,93 @@
+DOSSEG 
+.model SMALL 
+.stack 100h 
+ 
+.data 
+array db "Petrova A.A.", 10, 13 
+    db "Kruglov N.V.", 10, 13 
+    db "Andreev T.P.", 10, 13 
+    db "Krylova P.G.", 10, 13 
+    db "Kruglov F.I.", 10, 13 
+    db "Barsovi O.U.", 10, 13 
+    db "Savinov K.L.", 10, 13 
+    db "Egorova S.Y.", 10, 13 
+    db "Egorova D.N.", 10, 13 
+    db "Simonov K.A.", 10, 13 
+    db "$" 
+ 
+string db "New massiv: ", 10, 13, "$" 
+ 
+.code 
+; Функция обмена строк 
+swap proc near 
+    push bp 
+    mov bp, sp 
+    push si 
+    push di 
+ 
+    mov si, [bp+4]   ; Адрес первой строки 
+    mov di, [bp+6]   ; Адрес второй строки 
+    mov cx, 12       ; Длина строки для обмена 
+swap_loop: 
+    mov al, [si] 
+    mov bl, [di] 
+    mov [si], bl 
+    mov [di], al 
+    inc si 
+    inc di 
+    loop swap_loop 
+ 
+    pop di 
+    pop si 
+    pop bp 
+    ret 
+swap endp 
+ 
+start: 
+    mov ax, @data 
+    mov ds, ax 
+ 
+    ; Вывод начального списка 
+    mov dx, offset array 
+    mov ah, 09h 
+    int 21h 
+ 
+    ; Сортировка пузырьком 
+    mov cx, 9           ; Количество строк - 1 
+outer_loop: 
+    push cx 
+    mov si, offset array 
+    mov bx, 12          ; Размер строки в массиве 
+inner_loop: 
+    mov di, si 
+    add di, bx          ; Указатель на следующую строку 
+ 
+    ; Сравнение символов инициала имени 
+    mov al, [si+8]      ; Инициал имени текущей строки 
+    mov bl, [di+8]      ; Инициал имени следующей строки 
+    cmp al, bl 
+    jbe skip_swap       ; Если текущий <= следующего, пропускаем 
+ 
+    ; Обмен строками 
+    push si 
+    push di 
+    call swap 
+skip_swap: 
+    add si, 12          ; Переход к следующей строке 
+    loop inner_loop 
+ 
+    pop cx 
+    loop outer_loop 
+ 
+    ; Вывод отсортированного списка 
+    mov dx, offset string 
+    mov ah, 09h 
+    int 21h 
+    mov dx, offset array 
+    mov ah, 09h 
+    int 21h 
+ 
+    ; Завершение программы 
+    mov ah, 4Ch 
+    int 21h 
+end start
